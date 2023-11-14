@@ -1,0 +1,31 @@
+[*] '/home/user/bof_aeg/challenges/wpictf2020_dorsia1'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      PIE enabled
+[*] libc.so.6 found in custom_lib_dir, loading now
+[*] '/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    Canary found
+    NX:       NX enabled
+    PIE:      PIE enabled
+[*] Removing exist file /tmp/pwn/wpictf2020_dorsia1_debug
+[+] PT_INTERP has changed from b'/lib64/ld-linux-x86-64.so.2\x00' to b'/tmp/ld.so.2'. Using temp file /tmp/pwn/wpictf2020_dorsia1_debug
+[*] '/tmp/pwn/wpictf2020_dorsia1_debug'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      PIE enabled
+[*] set env={'LD_PRELOAD': '/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6', 'LD_LIBRARY_PATH': '/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} for debugging remote libc
+[x] Starting local process '/tmp/pwn/wpictf2020_dorsia1_debug' env={b'LD_PRELOAD': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6', b'LD_LIBRARY_PATH': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} 
+[+] Starting local process '/tmp/pwn/wpictf2020_dorsia1_debug' env={b'LD_PRELOAD': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6', b'LD_LIBRARY_PATH': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} : pid 13425
+[*] Finding win...
+[*] No win found!
+[*] Exploring to win...
+[*] No win!
+[*] Finding text/libc leak...
+[ERROR] PIE and No leak!
+[*] Stopped process '/tmp/pwn/wpictf2020_dorsia1_debug' (pid 13425)

