@@ -19,6 +19,5 @@ void register_name()
 int main()
 {
     register_name();
-
     return 0;
 }

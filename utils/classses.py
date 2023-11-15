@@ -313,7 +313,6 @@ class Bof_Aeg(object):
             find_flag_ret = self.find_matches_flag(res)
             print(find_flag_ret)
             if find_flag_ret:
-                print('abc')
                 self.p.close()
                 killmyself()
 

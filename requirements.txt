@@ -1,6 +1,6 @@
-ailment==9.2.76
-angr==9.2.76
-archinfo==9.2.76
+ailment==9.2.77
+angr==9.2.77
+archinfo==9.2.77
 asttokens==2.4.1
 backports.strenum==1.2.8
 bcrypt==4.0.1
@@ -11,8 +11,8 @@ capstone==5.0.1
 certifi==2023.7.22
 cffi==1.16.0
 charset-normalizer==3.3.2
-claripy==9.2.76
-cle==9.2.76
+claripy==9.2.77
+cle==9.2.77
 colored-traceback==0.3.0
 CppHeaderParser==2.7.4
 cryptography==41.0.5
@@ -65,7 +65,7 @@ pyvex==9.2.76
 r2pipe==1.8.2
 requests==2.31.0
 rich==13.6.0
-ROPGadget==7.4
+ROPGadget==7.3
 rpyc==5.3.1
 six==1.16.0
 smmap==5.0.1
@@ -76,7 +76,6 @@ traitlets==5.13.0
 unicorn==2.0.1.post1
 urllib3==2.1.0
 wcwidth==0.2.10
-welpwn==0.97
 z3-solver==4.10.2.0
 zope.event==5.0
 zope.interface==6.1
