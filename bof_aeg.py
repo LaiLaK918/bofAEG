@@ -56,7 +56,7 @@ if __name__ == '__main__':
     outputpath = "./output.txt"
     
     if not args.libc_path:
-        libpath = f"/home/{pwd.getpwuid(os.getuid())[0]}/glibc-all-in-one/libs/2.23-0ubuntu3_amd64/"
+        libpath = f"/home/{pwd.getpwuid(os.getuid())[0]}/glibc-all-in-one/libs/2.23-0ubuntu11.3_amd64/"
     else:
         libpath = args.libc_path
     init_profile(filepath, libpath, inputpath, outputpath)
