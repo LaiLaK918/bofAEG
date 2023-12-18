@@ -190,12 +190,12 @@ class Bof_Aeg(object):
         self.has_libc_leak = False
 
         r2 = init_r2(self.filepath, b'')
-        r2.cmd('dc')
+        r2.cmd('dc') # continue execution
         with open(self.outputpath,'rb') as f:
             data = f.read()
-        map_data = json.loads(r2.cmd('dmj'))
-        
-        if (b'0x555555' in data or b'\x55'*3 in data): # text leak
+        map_data = json.loads(r2.cmd('dmj')) # List memmaps in JSON format
+        print(map_data)
+        if (b'0x55555' in data or b'\x55'*3 in data): # text leak
             if b'0x555555' in data:
                 aid = data.index(b'0x555555')
                 leak = int(data[aid:aid+14],16)

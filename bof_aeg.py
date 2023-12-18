@@ -69,18 +69,20 @@ if __name__ == '__main__':
     #p = pwn.process(filepath, env={'LD_PRELOAD':libpath+'ld-linux-x86-64.so.2','LD_LIBRARY_PATH':libpath})
 
     pwn.context.binary = elf = pwn.ELF(filepath, checksec=False)
-    if elf.pie : elf.address = 0x555555554000 # need to be improved
+    if elf.pie:
+        if args.base:
+            elf.address = parse_str_to_int(args.base)
     else: p.info(f"Base address: {hex(elf.address)}")
 
     static_r2 = r2pipe.open(filepath) if not elf.pie \
-        else r2pipe.open(filepath,flags=['-B','0x555555554000'])
+        else r2pipe.open(filepath,flags=['-B',f'{hex(elf.address)}'])
     static_r2.cmd('aaa')
     
     plt = {}
     for i in json.loads(static_r2.cmd('iij')):
         if 'plt' not in i.keys():
             i['plt'] = None
-        if i['plt'] and i['plt'] != 0x555555554000: plt[i['name']] = i['plt']
+        if i['plt'] and i['plt'] != elf.address: plt[i['name']] = i['plt']
     elf.plt = plt
     
 
