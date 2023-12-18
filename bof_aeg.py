@@ -27,7 +27,7 @@ if __name__ == '__main__':
 
     parser.add_argument('--base', '-b', help='Base address of binary')
     parser.add_argument('--find-win', '-fw', action='store_true', help='Use find win function')
-    parser.add_argument('--win-name', '-fwname', help='Specify the name of win function')
+    parser.add_argument('--win-address', '-wa', help='Specify the name of win function')
     parser.add_argument('--canary', '-cn', help='Specify stack canary address')
     parser.add_argument('--get-shell', '-gsh', action='store_true', help='Use get shell technique')
     parser.add_argument('--binary', '-bin', help="Binary's path")
@@ -38,6 +38,10 @@ if __name__ == '__main__':
     parser.add_argument('--libc-path', '-lp', help='Path of libc')
     parser.add_argument('--int-max-str-digit', '-imsd', help="Use for set max int str digit")
     parser.add_argument('--shift-offset', '-so', help="Shift offset of libc function", type=int, default=0)
+    parser.add_argument('--integer-overflow', '-io', help="Use integer overflow mode", action="store_true")
+    parser.add_argument('--int', help="Integer to overflow", type=int)
+    parser.add_argument('--int-offset', help="Len to buffer's int overflow", type=int)
+    parser.add_argument('--prefix', help="Prefix of payload", type=str)
     
     args = parser.parse_args()
     filepath = args.binary
@@ -88,6 +92,11 @@ if __name__ == '__main__':
     
 
     bof_aeg = Bof_Aeg(filepath, elf, inputpath, outputpath, libpath, p)
+    
+    if args.integer_overflow:
+        bof_aeg.int_overflow(args.int, args.int_offset, prefix=args.prefix)
+        exit(0)
+    
     bof_aeg.find_win()
 
     if elf.pie:

