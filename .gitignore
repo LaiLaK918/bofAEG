@@ -5,3 +5,4 @@ __pycache__
 venv
 welpwn
 b.py
+*.txt

