@@ -25,6 +25,7 @@ def init_profile(filepath, libpath, inputpath, outputpath):
 program={filepath}
 stdin={inputpath}
 stdout={outputpath}
+libpath={libpath}
 aslr=no
 """.format(filepath=filepath, libpath=libpath, inputpath=inputpath, outputpath=outputpath)
     

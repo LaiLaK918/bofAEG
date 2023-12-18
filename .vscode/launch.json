@@ -8,7 +8,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": "true",
-            "args": ["--binary", "challenges/sharkyctf2020_give"]
+            "args": ["--binary", "challenges/downunderctf2021_deadcode", 
+                        "--libc-path", "/usr/lib/x86_64-linux-gnu/"]
         }
     ]
 }

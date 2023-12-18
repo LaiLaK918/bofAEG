@@ -37,6 +37,7 @@ if __name__ == '__main__':
     parser.add_argument('--ret-2-dlresolve', '-r2dl', action='store_true', help='Return to dlresolve technique')
     parser.add_argument('--libc-path', '-lp', help='Path of libc')
     parser.add_argument('--int-max-str-digit', '-imsd', help="Use for set max int str digit")
+    parser.add_argument('--shift-offset', '-so', help="Shift offset of libc function", type=int, default=0)
     
     args = parser.parse_args()
     filepath = args.binary
@@ -93,7 +94,7 @@ if __name__ == '__main__':
         # Directly use symbolic execution to explore to win
         bof_aeg.explore_to_win()
         # Looking for address leaks in your program
-        bof_aeg.find_leak()
+        bof_aeg.find_leak(shift_offset=args.shift_offset)
 
     p.info('Starting find stack bof')
     bof_aeg.find_stack_bof()
