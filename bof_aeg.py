@@ -100,7 +100,6 @@ if __name__ == '__main__':
     bof_aeg.find_win()
 
     if elf.pie:
-        # Directly use symbolic execution to explore to win
         bof_aeg.explore_to_win()
         # Looking for address leaks in your program
         bof_aeg.find_leak(shift_offset=args.shift_offset)

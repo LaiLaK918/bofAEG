@@ -8,7 +8,7 @@
             "program": "${file}",
             "console": "integratedTerminal",
             "justMyCode": "true",
-            "args": ["--binary", "challenges/downunderctf2021_deadcode", 
+            "args": ["--binary", "challenges/lexingtonctf2021_madlibs", 
                         "--libc-path", "/usr/lib/x86_64-linux-gnu/"]
         }
     ]
