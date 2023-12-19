@@ -40,6 +40,7 @@ if __name__ == '__main__':
     parser.add_argument('--int', help="Integer to overflow", type=int)
     parser.add_argument('--int-offset', help="Len to buffer's int overflow", type=int)
     parser.add_argument('--prefix', help="Prefix of payload", type=str)
+    parser.add_argument('--win-in-output', '-wio', help="Win address in output", action="store_true")
     
     args = parser.parse_args()
     filepath = args.binary
@@ -64,14 +65,15 @@ if __name__ == '__main__':
         libpath = args.libc_path
     init_profile(filepath, libpath, inputpath, outputpath)
 
+    pwn.context.binary = elf = pwn.ELF(filepath, checksec=False)
+
     pwn.ctx.binary = filepath
     pwn.ctx.custom_lib_dir = libpath
-    pwn.ctx.debug_remote_libc = True
+    pwn.ctx.debug_remote_libc = not elf.statically_linked
 
     p = pwn.ctx.start()
     #p = pwn.process(filepath, env={'LD_PRELOAD':libpath+'ld-linux-x86-64.so.2','LD_LIBRARY_PATH':libpath})
 
-    pwn.context.binary = elf = pwn.ELF(filepath, checksec=False)
     if elf.pie:
         if args.base:
             elf.address = parse_str_to_int(args.base)
@@ -89,7 +91,7 @@ if __name__ == '__main__':
     elf.plt = plt
     
 
-    bof_aeg = Bof_Aeg(filepath, elf, inputpath, outputpath, libpath, p)
+    bof_aeg = Bof_Aeg(filepath, elf, inputpath, outputpath, libpath, p, args=args)
     
     if args.integer_overflow:
         bof_aeg.int_overflow(args.int, args.int_offset, prefix=args.prefix)

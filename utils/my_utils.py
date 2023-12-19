@@ -125,3 +125,10 @@ def get_sp_register(st: angr.SimState):
     elif pwn.context.arch == 'i386':
         return st.regs.esp
     raise NotImplementedError(f"This tool is not yet supported the architecture {pwn.context.arch}")
+
+import re
+
+def find_hex_strings(input_string):
+    pattern = rb'0x[0-9a-fA-F]+'
+    hex_strings = re.findall(pattern, input_string)
+    return hex_strings
