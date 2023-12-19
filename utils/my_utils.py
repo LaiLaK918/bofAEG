@@ -5,6 +5,7 @@ import subprocess, os, sys
 import binascii
 import r2pipe
 import json
+import angr
 
 def one_gadget(filename):
   return [int(i) for i in subprocess.check_output(['one_gadget', '--raw', filename]).decode().split(' ')]
@@ -82,13 +83,13 @@ def check_r2_one(r2, stack_off=0):
     if rax == 0:
         return 0x45206
 
-    if not pwn.u64(bytes(json.loads(r2.cmd('xj 8 @'+hex(rsp+0x30))))):
+    if not unpack(bytes(json.loads(r2.cmd('xj 8 @'+hex(rsp+0x30))))):
         return 0x4525a
 
-    if not pwn.u64(bytes(json.loads(r2.cmd('xj 8 @'+hex(rsp+0x50))))):
+    if not unpack(bytes(json.loads(r2.cmd('xj 8 @'+hex(rsp+0x50))))):
         return 0xef9f4
         
-    if not pwn.u64(bytes(json.loads(r2.cmd('xj 8 @'+hex(rsp+0x70))))):
+    if not unpack(bytes(json.loads(r2.cmd('xj 8 @'+hex(rsp+0x70))))):
         return 0xf0897
 
 def parse_str_to_int(int_str: str):
@@ -97,3 +98,30 @@ def parse_str_to_int(int_str: str):
     else:
         return int(int_str)
     
+def pack(address: int) -> bytes:
+    if pwn.context.arch == 'amd64':
+        return pwn.p64(address)
+    elif pwn.context.arch == 'i386':
+        return pwn.p32(address)
+    raise NotImplementedError(f"This tool is not yet supported the architecture {pwn.context.arch}")
+
+def unpack(address: bytes) -> int:
+    if pwn.context.arch == 'amd64':
+        return pwn.u64(address)
+    elif pwn.context.arch == 'i386':
+        return pwn.u32(address)
+    raise NotImplementedError(f"This tool is not yet supported the architecture {pwn.context.arch}")
+
+def get_di_register(st: angr.SimState):
+    if pwn.context.arch == 'amd64':
+        return st.regs.rdi
+    elif pwn.context.arch == 'i386':
+        return st.regs.edi
+    raise NotImplementedError(f"This tool is not yet supported the architecture {pwn.context.arch}")
+
+def get_sp_register(st: angr.SimState):
+    if pwn.context.arch == 'amd64':
+        return st.regs.rsp
+    elif pwn.context.arch == 'i386':
+        return st.regs.esp
+    raise NotImplementedError(f"This tool is not yet supported the architecture {pwn.context.arch}")
